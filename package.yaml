@@ -6,6 +6,9 @@ category:            Game
 
 dependencies:
   - base >= 4.7 && < 5
+  - gloss
+  - sdl2
+  - sdl2-mixer
 
 executables:
   ludum-dare:

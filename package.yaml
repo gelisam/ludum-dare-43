@@ -1,0 +1,13 @@
+name:                ludum-dare
+version:             0.1.0.0
+homepage:            https://github.com/gelisam/ludum-dare-43
+license:             PublicDomain
+category:            Game
+
+dependencies:
+  - base >= 4.7 && < 5
+
+executables:
+  ludum-dare:
+    source-dirs:      src
+    main:             Main.hs

@@ -2,7 +2,6 @@
 module AI where
 
 import Control.Applicative
-import Control.Comonad.Cofree
 import Control.Lens hiding ((:<))
 import Data.Foldable
 import Data.Map (Map)

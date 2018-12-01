@@ -1,15 +1,14 @@
-{-# LANGUAGE FlexibleInstances, TypeSynonymInstances #-}
-{-# OPTIONS -Wno-orphans #-}
+{-# LANGUAGE DeriveFunctor #-}
 module GameTree where
 
-import Control.Comonad.Cofree
 import Control.Lens hiding ((:<))
 import Data.Map (Map)
 
 import Debug
 
 
-type GameTree move = Cofree (Map move)
+data GameTree move a = a :< Map move (GameTree move a)
+  deriving Functor
 
 gameTreeTop :: Lens' (GameTree move a) a
 gameTreeTop f (a :< xs) = (:< xs) <$> f a

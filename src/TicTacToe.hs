@@ -9,6 +9,7 @@ import qualified Data.Set as Set
 
 import AI
 import AFold
+import Debug
 
 
 makePrisms ''Bool
@@ -31,6 +32,16 @@ newtype Board = Board
 
 makePrisms ''Board
 
+instance Debug Board where
+  printIndented indent (Board xss) = do
+    for_ [0..2] $ \j -> do
+      let s :: String
+          s = flip map [0..2] $ \i -> case xss ! (i,j) of
+                Nothing    -> '.'
+                Just True  -> 'X'
+                Just False -> 'O'
+      putIndentedStrLn indent s
+
 initialBoard :: Board
 initialBoard = Board . listArray ((0,0),(2,2)) . replicate 9 $ Nothing
 
@@ -39,16 +50,6 @@ boardLines = [mconcat [AFold (_Board . ix (i,   j)) | i <- [0..2]] | j <- [0..2]
           ++ [mconcat [AFold (_Board . ix (i,   j)) | j <- [0..2]] | i <- [0..2]]
           ++ [mconcat [AFold (_Board . ix (i,   i)) | i <- [0..2]]]
           ++ [mconcat [AFold (_Board . ix (i, 2-i)) | i <- [0..2]]]
-
-printBoard :: Board -> IO ()
-printBoard (Board xss) = do
-  for_ [0..2] $ \j -> do
-    for_ [0..2] $ \i -> do
-      case xss ! (i,j) of
-        Nothing    -> putStr "."
-        Just True  -> putStr "X"
-        Just False -> putStr "O"
-    putStrLn ""
 
 
 instance GameState Board where

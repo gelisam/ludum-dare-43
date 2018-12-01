@@ -6,6 +6,7 @@ category:            Game
 
 dependencies:
   - base >= 4.7 && < 5
+  - containers
   - free
   - gloss
   - lens

@@ -1,12 +1,8 @@
 module GameTree where
 
-import Control.Applicative
 import Control.Comonad.Cofree
 import Control.Lens hiding ((:<))
-import Data.Foldable
 import Data.Map (Map)
-import Data.Set (Set)
-import qualified Data.Map as Map
 
 
 type GameTree move = Cofree (Map move)

@@ -1,11 +1,8 @@
 -- Testing the AI module on a tiny game
-{-# LANGUAGE FlexibleContexts, LambdaCase, RankNTypes, TemplateHaskell, TypeFamilies #-}
+{-# LANGUAGE TemplateHaskell, TypeFamilies #-}
 module TicTacToe where
 
 import Control.Lens
-import Control.Monad
-import Control.Monad.Trans.Class
-import Control.Monad.Trans.State
 import Data.Array
 import Data.Foldable
 import qualified Data.Set as Set

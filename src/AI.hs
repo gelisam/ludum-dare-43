@@ -60,7 +60,7 @@ gameTreeFrom g = g :< subGameTrees
 -- an integer representing the number of cards.
 minimax :: forall g. GameState g
         => g -> GameTree (Move g) (ZipList Double)
-minimax g = ZipList progressionOfEstimates :< subMinimaxes
+minimax g = ZipList (stopEarly progressionOfEstimates) :< subMinimaxes
   where
     baseValue :: Double
     baseValue = score g
@@ -87,6 +87,14 @@ minimax g = ZipList progressionOfEstimates :< subMinimaxes
 
     progressionOfEstimates :: [Double]
     progressionOfEstimates = baseValue : fmap (best . toList) progressionOfSubEstimates
+
+    -- Stop estimating once someone wins. The list is still infinite, but it
+    -- requires no further computation.
+    stopEarly :: [Double] -> [Double]
+    stopEarly (x:xs) | x == infinity
+                    || x == negativeInfinity = repeat x
+                     | otherwise             = x : stopEarly xs
+    stopEarly [] = error "never happens, the list is infinite"
 
 includeGameState :: GameState g
                  => g -> GameTree (Move g) a -> GameTree (Move g) (g, a)

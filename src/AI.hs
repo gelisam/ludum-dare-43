@@ -6,8 +6,10 @@ import Control.Lens hiding ((:<))
 import Data.Foldable
 import Data.Map (Map)
 import Data.Set (Set)
+import qualified Data.List as List
 import qualified Data.Map as Map
 
+import Debug
 import GameTree
 
 
@@ -85,3 +87,21 @@ minimax g = ZipList progressionOfEstimates :< subMinimaxes
 
     progressionOfEstimates :: [Double]
     progressionOfEstimates = baseValue : fmap (best . toList) progressionOfSubEstimates
+
+includeGameState :: GameState g
+                 => g -> GameTree (Move g) a -> GameTree (Move g) (g, a)
+includeGameState g (a :< xs) = (g, a) :< xs'
+  where
+    xs' = Map.mapWithKey (\move -> includeGameState (playMove move g)) xs
+
+debugMinimax :: (Debug g, GameState g, Show (Move g))
+             => Int -> Int -> g -> IO ()
+debugMinimax m n g = debug
+                   . GameTree.take m
+                   . mapMoves SingleLine
+                   . includeGameState g
+                   . fmap (SingleLine . List.take n)
+                   . GameTree.takeUntil (\(x:_) -> x == infinity || x == negativeInfinity)
+                   . fmap getZipList
+                   . minimax
+                   $ g

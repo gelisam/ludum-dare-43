@@ -63,3 +63,11 @@ instance (Debug k, Debug a) => Debug (Map k a) where
         putIndentedStrLn (succ indent) ":"
         printIndented (succ indent) x'
       putIndentedStrLn indent "}"
+
+
+newtype SingleLine a = SingleLine
+  { unSingleLine :: a }
+  deriving (Eq, Ord, Show)
+
+instance Show a => Debug (SingleLine a) where
+  printIndented indent (SingleLine a) = putIndentedStrLn indent (show a)

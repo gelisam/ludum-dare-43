@@ -6,9 +6,13 @@ category:            Game
 
 dependencies:
   - base >= 4.7 && < 5
+  - free
   - gloss
+  - lens
+  - mtl
   - sdl2
   - sdl2-mixer
+  - transformers
 
 executables:
   ludum-dare:

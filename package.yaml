@@ -20,3 +20,4 @@ executables:
   ludum-dare:
     source-dirs:      src
     main:             Main.hs
+    ghc-options: -Wall

@@ -1,20 +1,33 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, TypeFamilies, ScopedTypeVariables #-}
 module AI where
 
 import Control.Applicative
 import Control.Comonad.Cofree
 import Control.Lens hiding ((:<))
+import Data.Foldable
+import Data.Map (Map)
+import Data.Set (Set)
+import qualified Data.Map as Map
 
 
 type Player = Bool
 
-class GameState g where
+class Ord (Move g) => GameState g where
+  type Move g
   currentPlayer :: g -> Player
-  validMoves    :: g -> [g]
+  validMoves    :: g -> Set (Move g)
+  playMove      :: Move g -> g -> g
 
   -- Bigger values mean the position looks good for player True.
   -- Use 'infinity' if True wins and 'negativeInfinity' if False wins.
   score :: g -> Double
+
+moveMap :: GameState g
+        => g -> Map (Move g) g
+moveMap g = Map.fromList
+          [ (move, playMove move g)
+          | move <- toList (validMoves g)
+          ]
 
 infinity :: Double
 infinity = 1/0
@@ -23,20 +36,20 @@ negativeInfinity :: Double
 negativeInfinity = negate infinity
 
 
-type GameTree = Cofree ZipList
+type GameTree move = Cofree (Map move)
 
-gameTreeTop :: Lens' (GameTree a) a
+gameTreeTop :: Lens' (GameTree move a) a
 gameTreeTop f (a :< xs) = (:< xs) <$> f a
 
-gameTreeSub :: Lens' (GameTree a) (ZipList (GameTree a))
+gameTreeSub :: Lens' (GameTree move a) (Map move (GameTree move a))
 gameTreeSub f (a :< xs) = (a :<) <$> f xs
 
 gameTreeFrom :: forall g. GameState g
-             => g -> GameTree g
-gameTreeFrom g = g :< ZipList subGameTrees
+             => g -> GameTree (Move g) g
+gameTreeFrom g = g :< subGameTrees
   where
-    subGameTrees :: [GameTree g]
-    subGameTrees = fmap gameTreeFrom (validMoves g)
+    subGameTrees :: Map (Move g) (GameTree (Move g) g)
+    subGameTrees = gameTreeFrom <$> moveMap g
 
 -- Each game state is annotated with an infinite sequence of increasingly-better
 -- estimates, starting with 'score'.
@@ -51,8 +64,8 @@ gameTreeFrom g = g :< ZipList subGameTrees
 -- represented by a list of cards, and the opponent's hand being represented by
 -- an integer representing the number of cards.
 minimax :: forall g. GameState g
-        => g -> GameTree (ZipList Double)
-minimax g = ZipList progressionOfEstimates :< ZipList subMinimaxes
+        => g -> GameTree (Move g) (ZipList Double)
+minimax g = ZipList progressionOfEstimates :< subMinimaxes
   where
     baseValue :: Double
     baseValue = score g
@@ -65,17 +78,17 @@ minimax g = ZipList progressionOfEstimates :< ZipList subMinimaxes
     best xs | player    = maximum xs
             | otherwise = minimum xs
 
-    subMinimaxes :: [GameTree (ZipList Double)]
-    subMinimaxes = fmap minimax (validMoves g)
+    subMinimaxes :: Map (Move g) (GameTree (Move g) (ZipList Double))
+    subMinimaxes = minimax <$> moveMap g
 
     -- For each possible opponent move, an infinite list of estimates.
-    subProgressionOfEstimates :: [ZipList Double]
-    subProgressionOfEstimates = fmap (view gameTreeTop) subMinimaxes
+    subProgressionOfEstimates :: Map (Move g) (ZipList Double)
+    subProgressionOfEstimates = view gameTreeTop <$> subMinimaxes
 
     -- An infinite list, each element of which is set of estimates, one for each
     -- possible move by the opponent.
-    progressionOfSubEstimates :: [[Double]]
+    progressionOfSubEstimates :: [Map (Move g) Double]
     progressionOfSubEstimates = getZipList (sequenceA subProgressionOfEstimates)
 
     progressionOfEstimates :: [Double]
-    progressionOfEstimates = baseValue : fmap best progressionOfSubEstimates
+    progressionOfEstimates = baseValue : fmap (best . toList) progressionOfSubEstimates

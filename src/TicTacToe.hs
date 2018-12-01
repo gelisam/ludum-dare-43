@@ -1,12 +1,14 @@
 -- Testing the AI module on a tiny game
-{-# LANGUAGE LambdaCase, RankNTypes, TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts, LambdaCase, RankNTypes, TemplateHaskell, TypeFamilies #-}
 module TicTacToe where
 
 import Control.Lens
 import Control.Monad
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
+import Data.Array
 import Data.Foldable
+import qualified Data.Set as Set
 
 import AI
 import AFold
@@ -19,56 +21,49 @@ playerX, playerO :: Player
 playerX = True
 playerO = False
 
+
+type Pos = (Int, Int)
+
+boardPositions :: [Pos]
+boardPositions = [(i, j) | i <- [0..2], j <- [0..2]]
+
+
 newtype Board = Board
-  { unBoard :: [[Maybe Player]] }
+  { unBoard :: Array Pos (Maybe Player) }
   deriving (Eq, Show)
 
 makePrisms ''Board
 
-boardCells :: Traversal' Board (Maybe Player)
-boardCells = _Board . each . each
+initialBoard :: Board
+initialBoard = Board . listArray ((0,0),(2,2)) . replicate 9 $ Nothing
 
 boardLines :: [AFold Board (Maybe Player)]
-boardLines = [AFold (_Board . ix i . each) | i <- [0..2]]
-          ++ [AFold (_Board . each . ix i) | i <- [0..2]]
-          ++ [mconcat [AFold (_Board . ix i . ix i    ) | i <- [0..2]]]
-          ++ [mconcat [AFold (_Board . ix i . ix (2-i)) | i <- [0..2]]]
+boardLines = [mconcat [AFold (_Board . ix (i,   j)) | i <- [0..2]] | j <- [0..2]]
+          ++ [mconcat [AFold (_Board . ix (i,   j)) | j <- [0..2]] | i <- [0..2]]
+          ++ [mconcat [AFold (_Board . ix (i,   i)) | i <- [0..2]]]
+          ++ [mconcat [AFold (_Board . ix (i, 2-i)) | i <- [0..2]]]
 
 printBoard :: Board -> IO ()
-printBoard (Board xss) = for_ xss $ \row -> do
-  let row' = flip fmap row $ \case
-        Nothing    -> '.'
-        Just True  -> 'X'
-        Just False -> 'O'
-  putStrLn row'
+printBoard (Board xss) = do
+  for_ [0..2] $ \j -> do
+    for_ [0..2] $ \i -> do
+      case xss ! (i,j) of
+        Nothing    -> putStr "."
+        Just True  -> putStr "X"
+        Just False -> putStr "O"
+    putStrLn ""
 
-
-initialBoard :: Board
-initialBoard = Board . replicate 3 . replicate 3 $ Nothing
 
 instance GameState Board where
-  currentPlayer board = lengthOf (boardCells . _Just . _True ) board
-                     <= lengthOf (boardCells . _Just . _False) board
+  type Move Board = Pos
 
-  validMoves board = flip evalStateT False $ do
-    let player = currentPlayer board
-    board' <- forOf boardCells board $ \case
-      Nothing -> do
-        haveSwitched <- get
-        if haveSwitched
-        then pure Nothing
-        else do
-          shouldSwitch <- lift [True,False]
-          if shouldSwitch
-          then do
-            put True
-            pure (Just player)
-          else
-            pure Nothing
-      Just contents -> pure (Just contents)
-    haveSwitched <- get
-    guard haveSwitched
-    pure board'
+  currentPlayer board = lengthOf (_Board . each . _Just . _True ) board
+                     <= lengthOf (_Board . each . _Just . _False) board
+
+  validMoves = Set.fromList
+             . findIndicesOf (_Board . ifolded) (== Nothing)
+
+  playMove pos g = set (_Board . ix pos) (Just (currentPlayer g)) g
 
   score board
     = sum [ [0,1,10,infinity] !! lengthOf (boardLine . _Just . _True ) board
